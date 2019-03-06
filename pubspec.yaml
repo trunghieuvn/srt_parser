@@ -1,0 +1,15 @@
+name: srt_parser
+version: 1.0.0
+description: A .srt file parser
+
+authors: 
+  - Adrian Stabiszewski <as@grundid.de>
+  - Arman Torkzaban <at@vo.tc>
+homepage: https://git.mant.life/arman/srt_parser
+
+environment:
+  sdk: ">=2.0.0 <3.0.0"
+
+dev_dependencies:
+  test: ^1.5.1
+
