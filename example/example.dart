@@ -1,18 +1,9 @@
-# .srt parser
-
-## description
-A simple .srt file parser that allows you to read a String and convert it to a list of subtitle object.  
-Each Subtitle object contains a begin and an end time stamp and a list of subtitle strings. 
-
-### Example 
-
-```dart
 import 'package:srt_parser/srt_parser.dart';
 
 const String data = '''1
 00:02:26,407 --> 00:02:31,356  X1:100 X2:100 Y1:100 Y2:100
--- Arman I trust you
--- Arrrrrghhhhhh, ja ja 
+-- Arman I trust you, said the exhausted Adrian
+-- Arrrrrghhhhhh
 
 2
 00:02:31,567 --> 00:02:37,164 
@@ -25,11 +16,8 @@ void main() {
   for (Subtitle item in subtitles) {
     print('ID is: ${item.id}');
     print('Begin is: ${item.range.begin} and End is: ${item.range.end}');
-    for (String line in item.lines) {
-      print(line);
-    }
-    print('----');
+    item.parsedLines.forEach((Line line) =>
+        line.subLines.forEach((SubLine subLine) => print(subLine.rawString)));
   }
+  print('----');
 }
-
-```

@@ -1,21 +1,174 @@
-import 'dart:convert';
+import 'package:csslib/parser.dart';
+import 'package:srt_parser/color_map.dart';
 
 class Range {
   Range(this.begin, this.end);
 
   int begin;
   int end;
+
+  int get duration => end - begin;
+}
+
+class HtmlCode {
+  bool i;
+  bool u;
+  bool b;
+  Color fontColor = Color.transparent;
+}
+
+class Coordination {
+  final int X;
+  final int Y;
+
+  Coordination({this.X, this.Y});
 }
 
 class Subtitle {
   int id;
   Range range;
-  List<String> lines;
+  List<Line> parsedLines = [];
+  double pauseTime;
+  int sumOfLengthOfUnits;
+  List<String> rawLines = [];
+}
+
+class Line {
+  Line(this.rawLine);
+
+  final String rawLine;
+
+//either a whole line has code or subLines have or none
+  Coordination coordination;
+
+  // HtmlCode htmlCode;
+
+  List<SubLine> subLines = [];
+}
+
+class SubLine {
+  HtmlCode htmlCode = HtmlCode();
+  String rawString;
+  List<PartOfSpeech> posList;
+
+  SubLine({this.rawString});
+}
+
+class PartOfSpeech {}
+
+void parseHtml(Subtitle subtitle) {
+  final RegExp detectAll = RegExp(
+      r'((<(b|i|u|(font color="((#([0-9a-fA-F]+))|((rgb|rgba)\(((\d{1,3}),(\d{1,3}),(\d{1,3})|(\d{1,3}),(\d{1,3}),(\d{1,3}),(0?\.[1-9]{1,2}|1))\))|([a-z]+))"))>)+)([^<|>|\/]+)((<\/(b|i|u|font)>)+)+|([^<|>|\/]+)');
+
+  final RegExp detectFont = RegExp(r'(<font color=")');
+  final RegExp detectI = RegExp(r'(<i>)');
+  final RegExp detectB = RegExp(r'(<b>)');
+  final RegExp detectU = RegExp(r'(<u>)');
+
+  for (String line in subtitle.rawLines) {
+    int index = subtitle.rawLines.indexOf(line);
+    Iterable<Match> allMatches = detectAll.allMatches(line);
+
+    for (Match match in allMatches) {
+      String firstMatch = match.group(1);
+      // not coded text
+      if (match.group(23) != null) {
+        subtitle.parsedLines[index].subLines
+            .add(SubLine(rawString: match.group(23)));
+        continue;
+      }
+      //Html-coded text
+      else {
+        SubLine subLineWithCode = SubLine();
+
+        if (detectI.hasMatch(firstMatch)) {
+          subLineWithCode.htmlCode.i = true;
+        }
+
+        if (detectB.hasMatch(firstMatch)) {
+          subLineWithCode.htmlCode.b = true;
+        }
+        if (detectU.hasMatch(firstMatch)) {
+          subLineWithCode.htmlCode.u = true;
+        }
+        //font color
+        if (detectFont.hasMatch(firstMatch)) {
+          //hexColor
+          if (match.group(7) != null) {
+            subLineWithCode.htmlCode.fontColor = Color.hex(match.group(7));
+          }
+          //rgb or rgba
+          if (match.group(8) != null) {
+            if (match.group(9) == 'rgb') {
+              subLineWithCode.htmlCode.fontColor = Color.createRgba(
+                  int.parse(match.group(11)),
+                  int.parse(match.group(12)),
+                  int.parse(match.group(13)));
+            }
+            if (match.group(9) == 'rgba') {
+              subLineWithCode.htmlCode.fontColor = Color.createRgba(
+                  int.parse(match.group(14)),
+                  int.parse(match.group(15)),
+                  int.parse(match.group(16)),
+                  num.parse(match.group(17)));
+            }
+          }
+
+          // if color word names
+          if (match.group(18) != null) {
+            //colorMap[colorMap.keys.firstWhere((key)=> key == match.group(18))];
+            subLineWithCode.htmlCode.fontColor = colorMap.entries
+                .firstWhere((MapEntry entry) => entry.key == match.group(18))
+                .value;
+          }
+        }
+        subLineWithCode.rawString = match.group(19);
+
+        subtitle.parsedLines[index].subLines.add(subLineWithCode);
+      }
+    }
+  }
+        subtitle.parsedLines.forEach((Line line) => print('there is a $line'));
+}
+
+void parseCoordination(Subtitle subtitle, String chunk1) {
+  final RegExp detectCoordination = RegExp(r'((X|Y)(\d)):(\d\d\d)');
+
+  final Iterable<Match> result = detectCoordination.allMatches(chunk1);
+  print(result);
+
+  if (result.length != 0) {
+    print('result is not null');
+
+    List listOfXs =
+        result.where((Match match) => match.group(2) == 'X').toList();
+
+    //divide by two and create a Coordination of each X:Y group
+
+    for (Match item in listOfXs) {
+      int number = int.parse(item.group(3));
+      Match matchingY = result.firstWhere((Match matchY) {
+        return (matchY.group(2) == 'Y' && int.parse(matchY.group(3)) == number);
+      });
+
+      Line parsedLine = Line(subtitle.rawLines[listOfXs.indexOf(item)]);
+      parsedLine.coordination = Coordination(
+          X: int.parse(item.group(4)), Y: int.parse(matchingY.group(4)));
+
+      subtitle.parsedLines.add(parsedLine);
+    }
+  } else {
+    print('inside the else of coordination');
+    for (String line in subtitle.rawLines) {
+      Line parsedLine = Line(line);
+      subtitle.parsedLines.add(parsedLine);
+    }
+  }
 }
 
 Range parseBeginEnd(String line) {
   final RegExp pattern = RegExp(
-      r'(\d\d):(\d\d):(\d\d),(\d\d\d) --> (\d\d):(\d\d):(\d\d),(\d\d\d).*');
+      r'(\d\d):(\d\d):(\d\d),(\d\d\d) --> (\d\d):(\d\d):(\d\d),(\d\d\d)');
   final Match match = pattern.firstMatch(line);
 
   if (match == null) {
@@ -36,17 +189,18 @@ Range parseBeginEnd(String line) {
         int.parse(match.group(2)),
         int.parse(match.group(3)),
         int.parse(match.group(4)));
+
     final int end = timeStampToMillis(
         int.parse(match.group(5)),
         int.parse(match.group(6)),
         int.parse(match.group(7)),
         int.parse(match.group(8)));
+
     return Range(begin, end);
   }
 }
 
 int timeStampToMillis(int hour, int minute, int sec, int ms) {
-
   if (hour <= 23 &&
       hour >= 0 &&
       minute <= 59 &&
@@ -66,12 +220,42 @@ int timeStampToMillis(int hour, int minute, int sec, int ms) {
 }
 
 List<String> splitIntoLines(String data) {
-  return const LineSplitter().convert(data);
+// Character constants.
+  const int _LF = 10;
+  const int _CR = 13;
+
+  final List<String> lines = <String>[];
+
+  final int end = data.length;
+
+  int sliceStart = 0;
+
+  int char = 0;
+
+  for (int i = 0; i < end; i++) {
+    final int previousChar = char;
+    char = data.codeUnitAt(i);
+    if (char != _CR) {
+      if (char != _LF) {
+        continue;
+      }
+      if (previousChar == _CR) {
+        sliceStart = i + 1;
+        continue;
+      }
+    }
+    lines.add(data.substring(sliceStart, i));
+    sliceStart = i + 1;
+  }
+  if (sliceStart < end) {
+    lines.add(data.substring(sliceStart, end));
+  }
+  return lines;
 }
 
 List<List<String>> splitIntoSubtitleChunks(List<String> lines) {
   final List<List<String>> result = [];
-  List<String> chunk = [];
+  List<String> chunk = <String>[];
 
   for (String line in lines) {
     if (line.isEmpty) {
@@ -98,7 +282,10 @@ List<Subtitle> parseSrt(String srt) {
     final Subtitle subtitle = Subtitle();
     subtitle.id = int.parse(chunk[0]);
     subtitle.range = parseBeginEnd(chunk[1]);
-    subtitle.lines = chunk.sublist(2);
+    subtitle.rawLines = chunk.sublist(2);
+    parseCoordination(subtitle, chunk[1]);
+
+    parseHtml(subtitle);
 
     result.add(subtitle);
   }
