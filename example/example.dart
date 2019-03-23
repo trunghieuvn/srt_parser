@@ -2,7 +2,7 @@ import 'package:srt_parser/srt_parser.dart';
 
 const String data = '''1
 00:02:26,407 --> 00:02:31,356  X1:100 X2:100 Y1:100 Y2:100
-+ time to move on<u><b><font color="#00ff00">Arman</font></b></u>.
++ time to move on, <u><b><font color="#00ff00">Arman</font></b></u>.
 - OK
 
 2
