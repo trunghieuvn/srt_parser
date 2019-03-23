@@ -1,8 +1,8 @@
 # .srt parser
 
 ## description
-A simple .srt file parser that allows you to read a String and convert it to a list of subtitle object.  
-Each Subtitle object contains a begin and an end time stamp and a list of subtitle strings. 
+A .srt file parser that allows you to read a String containing HTML, coordination and timestamps information and convert it to a list of subtitle objects.  
+Each Subtitle object contains a list of subtitle subsets with their corresponding metadata. 
 
 ### Example 
 
