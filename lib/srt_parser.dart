@@ -128,18 +128,14 @@ void parseHtml(Subtitle subtitle) {
       }
     }
   }
-        subtitle.parsedLines.forEach((Line line) => print('there is a $line'));
 }
 
 void parseCoordination(Subtitle subtitle, String chunk1) {
   final RegExp detectCoordination = RegExp(r'((X|Y)(\d)):(\d\d\d)');
 
   final Iterable<Match> result = detectCoordination.allMatches(chunk1);
-  print(result);
 
   if (result.length != 0) {
-    print('result is not null');
-
     List listOfXs =
         result.where((Match match) => match.group(2) == 'X').toList();
 
@@ -158,7 +154,6 @@ void parseCoordination(Subtitle subtitle, String chunk1) {
       subtitle.parsedLines.add(parsedLine);
     }
   } else {
-    print('inside the else of coordination');
     for (String line in subtitle.rawLines) {
       Line parsedLine = Line(line);
       subtitle.parsedLines.add(parsedLine);
