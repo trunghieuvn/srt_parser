@@ -1,35 +1,36 @@
 import 'package:csslib/parser.dart';
+import 'package:meta/meta.dart';
 import 'package:srt_parser/color_map.dart';
+import 'dart:convert' show LineSplitter;
 
+/// formatting (partial compliance) : https://en.wikipedia.org/wiki/SubRip#Formatting
 class Range {
   Range(this.begin, this.end);
 
   int begin;
   int end;
 
-  int get duration => end - begin;
+  Duration get duration => Duration(milliseconds: end - begin);
 }
 
 class HtmlCode {
   bool i;
   bool u;
   bool b;
-  Color fontColor = Color.transparent;
+  Color fontColor = Color.black;
 }
 
-class Coordination {
-  final int X;
-  final int Y;
+class Coordinates {
+  Coordinates({this.x, this.y});
 
-  Coordination({this.X, this.Y});
+  final int x;
+  final int y;
 }
 
 class Subtitle {
   int id;
   Range range;
   List<Line> parsedLines = [];
-  double pauseTime;
-  int sumOfLengthOfUnits;
   List<String> rawLines = [];
 }
 
@@ -37,26 +38,22 @@ class Line {
   Line(this.rawLine);
 
   final String rawLine;
+  Coordinates coordinates;
 
-//either a whole line has code or subLines have or none
-  Coordination coordination;
-
-  // HtmlCode htmlCode;
-
+  // TODO(Arman):Either a whole line has code or subLines have or none
   List<SubLine> subLines = [];
 }
 
 class SubLine {
+  SubLine({this.rawString});
+
   HtmlCode htmlCode = HtmlCode();
   String rawString;
-  List<PartOfSpeech> posList;
-
-  SubLine({this.rawString});
 }
 
-class PartOfSpeech {}
-
+@visibleForTesting
 void parseHtml(Subtitle subtitle) {
+  //https://regex101.com/r/LtkFNE/4
   final RegExp detectAll = RegExp(
       r'((<(b|i|u|(font color="((#([0-9a-fA-F]+))|((rgb|rgba)\(((\d{1,3}),(\d{1,3}),(\d{1,3})|(\d{1,3}),(\d{1,3}),(\d{1,3}),(0?\.[1-9]{1,2}|1))\))|([a-z]+))"))>)+)([^<|>|\/]+)((<\/(b|i|u|font)>)+)+|([^<|>|\/]+)');
 
@@ -116,7 +113,6 @@ void parseHtml(Subtitle subtitle) {
 
           // if color word names
           if (match.group(18) != null) {
-            //colorMap[colorMap.keys.firstWhere((key)=> key == match.group(18))];
             subLineWithCode.htmlCode.fontColor = colorMap.entries
                 .firstWhere((MapEntry entry) => entry.key == match.group(18))
                 .value;
@@ -130,7 +126,8 @@ void parseHtml(Subtitle subtitle) {
   }
 }
 
-void parseCoordination(Subtitle subtitle, String chunk1) {
+@visibleForTesting
+void parseCoordinates(Subtitle subtitle, String chunk1) {
   final RegExp detectCoordination = RegExp(r'((X|Y)(\d)):(\d\d\d)');
 
   final Iterable<Match> result = detectCoordination.allMatches(chunk1);
@@ -139,8 +136,7 @@ void parseCoordination(Subtitle subtitle, String chunk1) {
     List listOfXs =
         result.where((Match match) => match.group(2) == 'X').toList();
 
-    //divide by two and create a Coordination of each X:Y group
-
+    //divide by 2 and create a Coordination of each X:Y group
     for (Match item in listOfXs) {
       int number = int.parse(item.group(3));
       Match matchingY = result.firstWhere((Match matchY) {
@@ -148,8 +144,8 @@ void parseCoordination(Subtitle subtitle, String chunk1) {
       });
 
       Line parsedLine = Line(subtitle.rawLines[listOfXs.indexOf(item)]);
-      parsedLine.coordination = Coordination(
-          X: int.parse(item.group(4)), Y: int.parse(matchingY.group(4)));
+      parsedLine.coordinates = Coordinates(
+          x: int.parse(item.group(4)), y: int.parse(matchingY.group(4)));
 
       subtitle.parsedLines.add(parsedLine);
     }
@@ -161,6 +157,7 @@ void parseCoordination(Subtitle subtitle, String chunk1) {
   }
 }
 
+@visibleForTesting
 Range parseBeginEnd(String line) {
   final RegExp pattern = RegExp(
       r'(\d\d):(\d\d):(\d\d),(\d\d\d) --> (\d\d):(\d\d):(\d\d),(\d\d\d)');
@@ -195,6 +192,7 @@ Range parseBeginEnd(String line) {
   }
 }
 
+@visibleForTesting
 int timeStampToMillis(int hour, int minute, int sec, int ms) {
   if (hour <= 23 &&
       hour >= 0 &&
@@ -214,41 +212,14 @@ int timeStampToMillis(int hour, int minute, int sec, int ms) {
   }
 }
 
+@visibleForTesting
 List<String> splitIntoLines(String data) {
-// Character constants.
-  const int _LF = 10;
-  const int _CR = 13;
-
-  final List<String> lines = <String>[];
-
-  final int end = data.length;
-
-  int sliceStart = 0;
-
-  int char = 0;
-
-  for (int i = 0; i < end; i++) {
-    final int previousChar = char;
-    char = data.codeUnitAt(i);
-    if (char != _CR) {
-      if (char != _LF) {
-        continue;
-      }
-      if (previousChar == _CR) {
-        sliceStart = i + 1;
-        continue;
-      }
-    }
-    lines.add(data.substring(sliceStart, i));
-    sliceStart = i + 1;
-  }
-  if (sliceStart < end) {
-    lines.add(data.substring(sliceStart, end));
-  }
-  return lines;
+  return LineSplitter().convert(data);
 }
 
-List<List<String>> splitIntoSubtitleChunks(List<String> lines) {
+//splits
+@visibleForTesting
+List<List<String>> splitByEmptyLine(List<String> lines) {
   final List<List<String>> result = [];
   List<String> chunk = <String>[];
 
@@ -271,17 +242,15 @@ List<Subtitle> parseSrt(String srt) {
   final List<Subtitle> result = [];
 
   final List<String> split = splitIntoLines(srt);
-  final List<List<String>> splitChunk = splitIntoSubtitleChunks(split);
+  final List<List<String>> splitChunk = splitByEmptyLine(split);
 
   for (List<String> chunk in splitChunk) {
     final Subtitle subtitle = Subtitle();
     subtitle.id = int.parse(chunk[0]);
     subtitle.range = parseBeginEnd(chunk[1]);
     subtitle.rawLines = chunk.sublist(2);
-    parseCoordination(subtitle, chunk[1]);
-
+    parseCoordinates(subtitle, chunk[1]);
     parseHtml(subtitle);
-
     result.add(subtitle);
   }
 

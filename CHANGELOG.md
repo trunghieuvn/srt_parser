@@ -1,3 +1,12 @@
+##1.1.0+2
+* range.duration's type to Duration
+
+## 1.1.0+1
+* maintenance +@visibleForTesting
+
+## 1.1.0
+* parses html & coordination
+
 ## 1.0.1+1
 * maintenance 
 
