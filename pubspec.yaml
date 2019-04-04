@@ -6,7 +6,7 @@ authors:
   - Adrian Stabiszewski <as@grundid.de>
   - Arman Torkzaban <at@vo.tc>
 homepage: https://git.mant.life/arman/srt_parser
-repository: https://git.mant.life/arman/srt_parser
+repository: https://git.mant.life/arman/srt_parser/src/overkill
 issue_tracker: https://git.mant.life/arman/srt_parser/issues
 
 environment:
