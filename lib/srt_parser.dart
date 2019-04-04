@@ -14,9 +14,9 @@ class Range {
 }
 
 class HtmlCode {
-  bool i;
-  bool u;
-  bool b;
+  bool i = false;
+  bool u = false;
+  bool b = false;
   Color fontColor = Color.black;
 }
 

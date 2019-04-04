@@ -14,8 +14,8 @@ environment:
 
 dependencies:
   csslib: ^0.14.6
-  meta: ^1.1.7
+  meta: ^1.1.6
 
 dev_dependencies:
-  test: ^1.5.1
+  test: ^1.6.1
   

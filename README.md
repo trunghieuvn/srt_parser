@@ -33,3 +33,28 @@ void main() {
 }
 
 ```
+
+### Using in Flutter
+
+A wrapper class like below should convert csslib's Color to dart:ui's. 
+
+```dart
+
+import 'dart:ui' as color_ref;
+
+import 'package:csslib/parser.dart';
+import 'package:srt_parser/srt_parser.dart';
+
+class WrappedHtmlCode {
+  WrappedHtmlCode(HtmlCode html){
+    htmlCode.i = html.i!=null? html.i:null;
+    htmlCode.b = html.b!=null? html.b:null;
+    color = html.fontColor== Color.black ?  const color_ref.Color(0xFF000000) :color_ref.Color(html.fontColor.argbValue);
+
+  }
+  HtmlCode htmlCode = HtmlCode();
+  color_ref.Color color;
+
+}
+
+```
