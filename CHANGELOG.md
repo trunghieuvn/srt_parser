@@ -1,7 +1,10 @@
-##1.1.0+3
+## 1.1.0+4
+* buggy revision reverted - no wrapperDetail
+
+## 1.1.0+3
 * i/u/b init. false, htmlCodeWrapper detailed
 
-##1.1.0+2
+## 1.1.0+2
 * range.duration's type to Duration
 
 ## 1.1.0+1

@@ -1,5 +1,5 @@
 name: srt_parser
-version: 1.1.0+2
+version: 1.1.0+4
 description: A cross-platform, .srt parser that allows you to read a String containing Html and Coordinates and results to subtitle objects.
 
 authors: 
